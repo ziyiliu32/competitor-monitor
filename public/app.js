@@ -54,6 +54,9 @@ function render(report) {
     const screenshot = node.querySelector(".screenshot");
     const empty = node.querySelector(".empty-shot");
     if (item.screenshot) {
+      if (item.screenshotMode === "full-page") {
+        node.querySelector(".image-wrap").classList.add("full-page");
+      }
       screenshot.src = item.screenshot;
       screenshot.alt = `${item.brand} ${item.type} 截图`;
       empty.remove();

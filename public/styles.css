@@ -43,6 +43,8 @@ h2 { margin: 5px 0 0; font-size: 20px; letter-spacing: -.03em; }
 .source-link { display: inline-block; margin: 12px 0; color: var(--accent); font-size: 13px; font-weight: 700; text-decoration: none; }
 .image-wrap { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #e8ebe4; border: 1px solid var(--line); }
 .screenshot { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+.image-wrap.full-page { aspect-ratio: auto; max-height: 680px; overflow: auto; }
+.image-wrap.full-page .screenshot { height: auto; object-fit: initial; }
 .empty-shot { height: 100%; display: grid; place-items: center; color: var(--muted); font-size: 13px; background: repeating-linear-gradient(-45deg, #eef0ea, #eef0ea 10px, #e8ebe4 10px, #e8ebe4 20px); }
 .summary { padding: 16px 0 8px; }
 .headline { margin: 0 0 7px; font-weight: 800; }

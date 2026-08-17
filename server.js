@@ -16,15 +16,15 @@ const JST_OFFSET_HOURS = 9;
 const CHROME_DEBUG_URL = process.env.CHROME_DEBUG_URL || "http://127.0.0.1:9222";
 
 const targets = [
-  { id: "rw-hero", brand: "Red Wing", type: "首页 Hero", url: "https://redwingheritage.jp/" },
+  { id: "rw-hero", brand: "Red Wing", type: "首页全页", screenshotMode: "full-page", url: "https://redwingheritage.jp/" },
   { id: "rw-men", brand: "Red Wing", type: "MEN 分类页", url: "https://redwingheritage.jp/category/MEN/" },
-  { id: "ugg-hero", brand: "UGG", type: "首页 Hero", url: "https://www.ugg.com/jp/" },
+  { id: "ugg-hero", brand: "UGG", type: "首页全页", screenshotMode: "full-page", url: "https://www.ugg.com/jp/" },
   { id: "ugg-men", brand: "UGG", type: "男款新品页", url: "https://www.ugg.com/jp/men-new-arrivals/" },
-  { id: "dm-hero", brand: "Dr. Martens", type: "首页 Hero", url: "https://jp.drmartens.com/home" },
+  { id: "dm-hero", brand: "Dr. Martens", type: "首页全页", screenshotMode: "full-page", url: "https://jp.drmartens.com/home" },
   { id: "dm-new", brand: "Dr. Martens", type: "全新商品页", url: "https://jp.drmartens.com/all_new/" },
-  { id: "cv-hero", brand: "Converse", type: "首页 Hero", url: "https://converse.co.jp/" },
+  { id: "cv-hero", brand: "Converse", type: "首页全页", screenshotMode: "full-page", url: "https://converse.co.jp/" },
   { id: "cv-men", brand: "Converse", type: "男款即将上市页", url: "https://converse.co.jp/collections/soon/mens" },
-  { id: "nike-hero", brand: "Nike", type: "首页 Hero", url: "https://www.nike.com/jp/" },
+  { id: "nike-hero", brand: "Nike", type: "首页全页", screenshotMode: "full-page", url: "https://www.nike.com/jp/" },
   { id: "nike-men", brand: "Nike", type: "男款新品鞋页", url: "https://www.nike.com/jp/w/new-mens-shoes-3n82yznik1zy7ok" }
 ];
 
@@ -147,7 +147,7 @@ async function captureTarget(browser, target, date) {
     }
     const visibleLines = cleanLines(visibleText);
     const screenshotFile = path.join(SCREENSHOTS_DIR, date, screenshotName);
-    await page.screenshot({ path: screenshotFile, fullPage: false });
+    await page.screenshot({ path: screenshotFile, fullPage: target.screenshotMode === "full-page" });
 
     const summary = makeSummary(target, previous, visibleLines);
     const currentSnapshot = {
