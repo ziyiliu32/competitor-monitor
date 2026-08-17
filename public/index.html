@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>竞品官网监控日报</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">JAPAN COMPETITOR INTELLIGENCE</p>
+          <h1>竞品官网监控日报</h1>
+          <p class="subhead">Red Wing · UGG · Dr. Martens · Converse · Nike</p>
+        </div>
+        <div class="run-box">
+          <span id="status-dot" class="status-dot"></span>
+          <span id="status">正在读取状态…</span>
+          <button id="run-now" type="button">立即刷新</button>
+        </div>
+      </header>
+
+      <section class="report-summary">
+        <div>
+          <p class="label">日报日期</p>
+          <p class="report-date" id="report-date">—</p>
+        </div>
+        <div>
+          <p class="label">定时采集</p>
+          <p class="report-time">每天 11:00 JST</p>
+        </div>
+        <div class="insight">
+          <p class="label">今日总体判断</p>
+          <p id="insight">正在加载…</p>
+        </div>
+      </section>
+
+      <section class="toolbar">
+        <div id="counts" class="counts"></div>
+        <button id="reload" class="text-button" type="button">重新加载</button>
+      </section>
+
+      <section id="cards" class="cards" aria-live="polite"></section>
+    </main>
+    <template id="card-template">
+      <article class="card">
+        <div class="card-topline">
+          <div>
+            <p class="brand"></p>
+            <h2 class="type"></h2>
+          </div>
+          <span class="priority"></span>
+        </div>
+        <a class="source-link" target="_blank" rel="noreferrer">打开原页面 ↗</a>
+        <div class="image-wrap">
+          <img class="screenshot" alt="" />
+          <div class="empty-shot">等待首张截图</div>
+        </div>
+        <section class="summary">
+          <p class="headline"></p>
+          <p class="business-summary"></p>
+          <ul class="changes"></ul>
+        </section>
+        <p class="captured-at"></p>
+      </article>
+    </template>
+    <script src="/app.js"></script>
+  </body>
+</html>

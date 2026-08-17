@@ -1,0 +1,14 @@
+{
+  "name": "competitor-monitoring",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Daily competitor website monitoring dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "run-now": "node server.js --run-now"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
+}

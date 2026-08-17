@@ -1,0 +1,14 @@
+# Local capture output and reports
+data/
+
+# Dedicated Chrome profile: may contain cookies and authenticated sessions
+chrome-profile/
+
+# Dependencies and system files
+node_modules/
+.DS_Store
+Thumbs.db
+
+# Local environment configuration
+.env
+.env.*
