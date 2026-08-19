@@ -104,8 +104,8 @@ function getChanges(previous = [], current = []) {
   };
 }
 
-async function extractPageSignals(page, kind) {
-  return page.evaluate((pageKind) => {
+async function extractPageSignals(page, target) {
+  return page.evaluate(({ pageKind, targetId }) => {
     const text = (element) => (element?.innerText || element?.textContent || "").replace(/\s+/g, " ").trim();
     const isVisible = (element) => {
       const style = window.getComputedStyle(element);
@@ -152,18 +152,36 @@ async function extractPageSignals(page, kind) {
       return /product|products|item|style|shoe|boot|sneaker/i.test(href) && text(element).length >= 3;
     }, 12);
     const productImages = [...main.querySelectorAll("img")].filter(isVisible).map((image) => image.alt).filter(Boolean).slice(0, 12);
+    const badgePattern = /new arrival|new|coming soon|release date|available from|japan exclusive|japan only|limited|exclusive|pre-order|preorder|restock|back in stock|sale|discount|\u65b0\u7740|\u65b0\u4f5c|\u8fd1\u65e5\u767a\u58f2|\u767a\u58f2\u65e5|\u65e5\u672c\u9650\u5b9a|\u9650\u5b9a|\u4e88\u7d04|\u518d\u5165\u8377|\u30bb\u30fc\u30eb|\u5024\u4e0b\u3052/i;
+    const badgeLines = [...main.querySelectorAll("span, p, div, strong, em, small")]
+      .filter(isVisible)
+      .filter((element) => targetId !== "nb-new" || element.getBoundingClientRect().top >= 450)
+      .map((element) => {
+        const directText = [...element.childNodes]
+          .filter((node) => node.nodeType === Node.TEXT_NODE)
+          .map((node) => node.textContent || "")
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim();
+        return directText || text(element);
+      })
+      .map((line) => line.replace(/\s+/g, " ").trim())
+      .filter((line) => line.length >= 1 && line.length <= 80)
+      .filter((line) => badgePattern.test(line))
+      .slice(0, 24);
 
     return {
       headings,
       productLinks,
       productImages,
+      badgeLines: [...new Set(badgeLines)],
       hasFilter,
       hasSort,
       hasSearch,
       hasPromo,
       visibleImageCount: [...main.querySelectorAll("img")].filter(isVisible).length
     };
-  }, kind);
+  }, { pageKind: target.kind, targetId: target.id });
 }
 
 function productTypeSummary(signals, fallbackType) {
@@ -212,12 +230,38 @@ function createHeroAnalysis(target, signals) {
   };
 }
 
+function productBadgePoints(signals) {
+  const source = (signals.badgeLines || []).join(" ").toLowerCase();
+  const points = [];
+
+  if (/new arrival|new|\u65b0\u7740|\u65b0\u4f5c/.test(source)) {
+    points.push("New-arrival badges help shoppers identify recently released products directly in the grid.");
+  }
+  if (/coming soon|release date|available from|\u8fd1\u65e5\u767a\u58f2|\u767a\u58f2\u65e5/.test(source)) {
+    points.push("Coming-soon or release-date labels clarify when a product will become available before the shopper clicks in.");
+  }
+  if (/japan exclusive|japan only|\u65e5\u672c\u9650\u5b9a|\u9650\u5b9a|exclusive|limited/.test(source)) {
+    points.push("Japan-exclusive or limited-edition badges make scarcity and local relevance visible at the decision point.");
+  }
+  if (/pre-order|preorder|\u4e88\u7d04/.test(source)) {
+    points.push("Pre-order labels clarify that shoppers can secure a product before its general release.");
+  }
+  if (/restock|back in stock|\u518d\u5165\u8377/.test(source)) {
+    points.push("Restock labels help returning shoppers quickly find products that have become available again.");
+  }
+  if (/sale|discount|\u30bb\u30fc\u30eb|\u5024\u4e0b\u3052/.test(source)) {
+    points.push("Sale badges and discount language make value messages visible before the product-detail visit.");
+  }
+
+  return points;
+}
+
 function createPlpAnalysis(target, signals) {
   const uxPoints = [];
   if (signals.hasFilter) uxPoints.push("Filtering controls help shoppers narrow the assortment by relevant attributes.");
   if (signals.hasSort) uxPoints.push("Sorting options support quick comparison by priority such as newness or price.");
-  if (signals.visibleImageCount > 0) uxPoints.push("Product imagery in the grid supports fast visual scanning before a product-detail visit.");
-  if (signals.hasPromo) uxPoints.push("Newness or promotional labels make commercial highlights easier to identify.");
+  uxPoints.push(...productBadgePoints(signals));
+  if (signals.visibleImageCount > 0 && uxPoints.length < 3) uxPoints.push("Large product images make style, color, and silhouette easier to compare at a glance.");
   if (signals.hasSearch) uxPoints.push("Search access gives shoppers a direct route when browsing alone is not efficient.");
   if (uxPoints.length === 0) uxPoints.push("The page uses a structured assortment layout to help shoppers browse and compare products.");
 
@@ -351,7 +395,7 @@ async function captureTarget(browser, target, date) {
     }
 
     const visibleLines = cleanLines(visibleText);
-    const signals = await extractPageSignals(page, target.kind);
+    const signals = await extractPageSignals(page, target);
     const analysis = target.kind === "hero" ? createHeroAnalysis(target, signals) : createPlpAnalysis(target, signals);
     const screenshotFile = path.join(SCREENSHOTS_DIR, date, screenshotName);
     if (target.screenshotScrollY) {
