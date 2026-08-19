@@ -60,18 +60,23 @@ function createCard(item) {
     screenshot.remove();
   }
 
-  const analysis = item.analysis || {};
-  node.querySelector(".analysis-title").textContent = analysis.title || "Page analysis";
-  node.querySelector(".analysis-primary").textContent = analysis.primary || "Analysis will be available after the next capture.";
-  node.querySelector(".analysis-secondary").textContent = analysis.secondary || "";
+  const analysis = item.analysis;
+  const analysisDetail = node.querySelector(".analysis-detail");
+  if (analysis?.primary) {
+    node.querySelector(".analysis-title").textContent = analysis.title || "Page analysis";
+    node.querySelector(".analysis-primary").textContent = analysis.primary;
+    node.querySelector(".analysis-secondary").textContent = analysis.secondary || "";
 
-  const analysisPoints = node.querySelector(".analysis-points");
-  for (const point of analysis.points || []) {
-    const listItem = document.createElement("li");
-    listItem.textContent = point;
-    analysisPoints.append(listItem);
+    const analysisPoints = node.querySelector(".analysis-points");
+    for (const point of analysis.points || []) {
+      const listItem = document.createElement("li");
+      listItem.textContent = point;
+      analysisPoints.append(listItem);
+    }
+    if (!analysis.points?.length) analysisPoints.remove();
+  } else {
+    analysisDetail.remove();
   }
-  if (!analysis.points?.length) analysisPoints.remove();
 
   const changeHeadline = node.querySelector(".change-headline");
   changeHeadline.textContent = item.headline || "";

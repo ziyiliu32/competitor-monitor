@@ -133,7 +133,8 @@ async function extractPageSignals(page, kind) {
     if (pageKind === "hero") {
       return {
         headings,
-        actions,
+        heroText: collect("main h1, main h2, main h3, main p, main span, main a, main button, [role='main'] h1, [role='main'] h2, [role='main'] p, [role='main'] a, [role='main'] button", inViewport, 24),
+        actions: collect("main a, main button, [role='main'] a, [role='main'] button", inViewport, 6),
         hasPromo,
         visibleImageCount: [...document.images].filter(inViewport).length
       };
@@ -176,22 +177,33 @@ function productTypeSummary(signals, fallbackType) {
 }
 
 function createHeroAnalysis(target, signals) {
-  const heroMessage = signals.headings?.[0] || "Visual-led homepage message";
-  const supportingMessage = signals.headings?.slice(1, 3).join(" | ") || "Supporting copy is presented within the opening visual.";
-  const ctas = uniqueShortLines(signals.actions || [], 3).filter((action) => action.length <= 40);
-  const actionText = ctas.length ? `Primary actions visible: ${ctas.join(" / ")}.` : "A direct action path is provided from the opening visual.";
-  const uxPoints = [
-    "Large visual treatment establishes the campaign or product mood before the user scrolls.",
-    `Message hierarchy prioritizes "${heroMessage}".`,
-    actionText
-  ];
-  if (signals.hasPromo) uxPoints.push("Promotional or newness language helps make the commercial message immediately scannable.");
+  const heroMessage = signals.headings?.[0] || "";
+  const supportingMessage = signals.headings?.slice(1, 3).join(" | ");
+  const ctas = uniqueShortLines(signals.actions || [], 4).filter((action) => action.length <= 40);
+  const source = `${heroMessage} ${supportingMessage} ${(signals.heroText || []).join(" ")} ${ctas.join(" ")}`.toLowerCase();
+  const isSale = /\b(final sale|sale|discount|off|promotion|promo)\b|\u30bb\u30fc\u30eb|\u5272\u5f15|\u5024\u4e0b\u3052/.test(source);
+  const isNew = /\b(new arrival|new|launch|drop|latest)\b|\u65b0\u4f5c|\u65b0\u7740|\u65b0\u767a\u58f2|\u767a\u58f2/.test(source);
+  const isCollab = /\b(collab|collaboration|collection|skims)\b|\u30b3\u30e9\u30dc/.test(source);
+  const campaignType = isSale
+    ? "Promotion / sale event"
+    : isCollab
+      ? "Collaboration or collection launch"
+      : isNew
+        ? "New product launch"
+        : "Brand or seasonal campaign";
+
+  const watchPoints = [];
+  if (isSale) watchPoints.push("Watch the depth of the offer, deadline language, and whether discounted items move into the primary CTA.");
+  if (isNew) watchPoints.push("Watch whether the launch expands from the hero into the new-arrivals PLP and whether additional product types appear.");
+  if (isCollab) watchPoints.push("Watch for partner naming, limited-edition language, and dedicated collection landing pages.");
+  if (ctas.length) watchPoints.push(`Primary conversion path: ${ctas.slice(0, 2).join(" / ")}.`);
+  if (heroMessage) watchPoints.push(`Current hero message: "${heroMessage}".`);
 
   return {
-    title: "Hero banner analysis",
-    primary: heroMessage,
-    secondary: supportingMessage,
-    points: uxPoints.slice(0, 4)
+    title: "Campaign signal",
+    primary: campaignType,
+    secondary: heroMessage ? `Hero message: "${heroMessage}".${supportingMessage ? ` Supporting copy: ${supportingMessage}.` : ""}` : "",
+    points: watchPoints.slice(0, 3)
   };
 }
 
@@ -213,20 +225,12 @@ function createPlpAnalysis(target, signals) {
 }
 
 function fallbackAnalysis(target) {
-  if (target.kind === "hero") {
-    return {
-      title: "Hero banner analysis",
-      primary: "Existing homepage screenshot available.",
-      secondary: "Run a new capture to generate hero-message and CTA analysis.",
-      points: ["The next capture will inspect the visible hero message, visual hierarchy, and CTA treatment."]
-    };
-  }
-  return {
-    title: "PLP analysis",
-    primary: "Existing product listing screenshot available.",
-    secondary: "Run a new capture to identify product types and page-level shopping aids.",
-    points: ["The next capture will inspect product assortment, filters, sorting, and visual browsing aids."]
-  };
+  return null;
+}
+
+function isPlaceholderAnalysis(analysis) {
+  const text = `${analysis?.primary || ""} ${analysis?.secondary || ""} ${(analysis?.points || []).join(" ")}`;
+  return /existing homepage screenshot|existing product listing screenshot|run a new capture|next capture will inspect/i.test(text);
 }
 
 function createChangeSummary(target, previous, visibleLines) {
@@ -472,7 +476,7 @@ function normalizeReport(report) {
       ...item,
       ...target,
       priority: ["High", "Medium", "Low"].includes(item.priority) ? item.priority : "Low",
-      analysis: item.analysis || fallbackAnalysis(target),
+      analysis: isPlaceholderAnalysis(item.analysis) ? null : (item.analysis || fallbackAnalysis(target)),
       screenshotMode: item.screenshotMode || getScreenshotMode(target),
       changes: item.changes || []
     };
