@@ -54,7 +54,7 @@ h3 { margin: 5px 0 0; font-size: 20px; letter-spacing: -.03em; }
 .priority.medium { background: #fff1cd; border-color: #edcb7b; color: #805700; }
 .priority.low { background: #eaf1eb; border-color: #bad1bf; color: #376046; }
 .card-links { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0; }
-.source-link, .screenshot-link { color: var(--accent); font-size: 13px; font-weight: 700; text-decoration: none; }
+.source-link { color: var(--accent); font-size: 13px; font-weight: 700; text-decoration: none; }
 .image-wrap { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #e8ebe4; border: 1px solid var(--line); }
 .screenshot { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
 .image-wrap.full-page { aspect-ratio: auto; max-height: 520px; overflow: auto; scrollbar-width: auto; }
@@ -66,7 +66,6 @@ h3 { margin: 5px 0 0; font-size: 20px; letter-spacing: -.03em; }
 .analysis-primary { margin: 0; font-size: 15px; font-weight: 750; line-height: 1.45; }
 .analysis-secondary { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
 .analysis-points { margin: 12px 0 0; padding-left: 18px; color: #3c4842; font-size: 13px; line-height: 1.55; }
-.change-headline { margin: 14px 0 0; font-weight: 750; font-size: 13px; }
 .changes { margin: 8px 0 0; padding-left: 18px; color: #3c4842; font-size: 13px; line-height: 1.55; }
 .captured-at { margin: 12px 0 0; color: var(--muted); font-size: 11px; }
 

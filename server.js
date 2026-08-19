@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { URL } = require("node:url");
+const { spawn } = require("node:child_process");
 const { chromium } = require("playwright");
 
 const PORT = Number(process.env.PORT || 3000);
@@ -13,6 +14,8 @@ const SCREENSHOTS_DIR = path.join(DATA_DIR, "screenshots");
 const REPORTS_DIR = path.join(DATA_DIR, "reports");
 const SNAPSHOTS_DIR = path.join(DATA_DIR, "snapshots");
 const CHROME_DEBUG_URL = process.env.CHROME_DEBUG_URL || "http://127.0.0.1:9222";
+const CHROME_EXECUTABLE = process.env.CHROME_EXECUTABLE || "C:/Program Files/Google/Chrome/Application/chrome.exe";
+const CHROME_PROFILE_DIR = process.env.CHROME_PROFILE_DIR || path.join(ROOT, "chrome-profile");
 
 const targets = [
   { id: "rw-hero", brand: "Red Wing", type: "Homepage", kind: "hero", homepage: true, url: "https://redwingheritage.jp/" },
@@ -320,13 +323,14 @@ async function waitForHeroMedia(page, target) {
 }
 
 async function captureTarget(browser, target, date) {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const snapshotPath = path.join(SNAPSHOTS_DIR, `${target.id}.json`);
   const previous = await readJson(snapshotPath);
   const screenshotMode = getScreenshotMode(target);
   const screenshotName = `${target.id}.png`;
+  let page;
 
   try {
+    page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
     page.setDefaultTimeout(15000);
     const navigation = await page.goto(target.url, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForTimeout(2500);
@@ -387,7 +391,7 @@ async function captureTarget(browser, target, date) {
       changes: []
     };
   } finally {
-    await page.close();
+    await page?.close().catch(() => undefined);
   }
 }
 
@@ -405,8 +409,29 @@ async function connectBrowser() {
     console.log(`Connected to monitoring Chrome: ${CHROME_DEBUG_URL}`);
     return { browser, browserMode: "Google Chrome (dedicated monitoring profile)", closeWhenDone: false };
   } catch {
-    const browser = await chromium.launch({ headless: true });
-    return { browser, browserMode: "Isolated Chromium (fallback)", closeWhenDone: true };
+    try {
+      spawn(CHROME_EXECUTABLE, [
+        "--remote-debugging-port=9222",
+        `--user-data-dir=${CHROME_PROFILE_DIR}`,
+        "--no-first-run",
+        "--no-default-browser-check"
+      ], { detached: true, stdio: "ignore", windowsHide: true }).unref();
+
+      const deadline = Date.now() + 15000;
+      while (Date.now() < deadline) {
+        try {
+          const browser = await chromium.connectOverCDP(CHROME_DEBUG_URL, { timeout: 2000 });
+          console.log("Started and connected to the dedicated Chrome profile.");
+          return { browser, browserMode: "Google Chrome (dedicated monitoring profile)", closeWhenDone: false };
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+      throw new Error("Dedicated Chrome did not expose its debugging port in time.");
+    } catch {
+      const browser = await chromium.launch({ headless: true });
+      return { browser, browserMode: "Isolated Chromium (last-resort fallback)", closeWhenDone: true };
+    }
   }
 }
 

@@ -42,13 +42,6 @@ function createCard(item) {
   const sourceLink = node.querySelector(".source-link");
   sourceLink.href = item.url;
 
-  const screenshotLink = node.querySelector(".screenshot-link");
-  if (item.screenshot) {
-    screenshotLink.href = item.screenshot;
-  } else {
-    screenshotLink.remove();
-  }
-
   const screenshot = node.querySelector(".screenshot");
   const emptyShot = node.querySelector(".empty-shot");
   if (item.screenshot) {
@@ -78,17 +71,15 @@ function createCard(item) {
     analysisDetail.remove();
   }
 
-  const changeHeadline = node.querySelector(".change-headline");
-  changeHeadline.textContent = item.headline || "";
-  if (!item.headline) changeHeadline.remove();
-
   const changes = node.querySelector(".changes");
-  for (const change of item.changes || []) {
-    const listItem = document.createElement("li");
-    listItem.textContent = change;
-    changes.append(listItem);
+  if (item.status === "success") {
+    for (const change of item.changes || []) {
+      const listItem = document.createElement("li");
+      listItem.textContent = change;
+      changes.append(listItem);
+    }
   }
-  if (!item.changes?.length) changes.remove();
+  if (item.status !== "success" || !item.changes?.length) changes.remove();
 
   node.querySelector(".captured-at").textContent = `Captured: ${displayTimestamp(item.capturedAt)}`;
   return node;
