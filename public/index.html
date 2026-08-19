@@ -12,11 +12,11 @@
         <div>
           <p class="eyebrow">JAPAN COMPETITOR INTELLIGENCE</p>
           <h1>Competitor Monitoring</h1>
-          <p class="subhead">Red Wing · UGG · Dr. Martens · Converse · Nike</p>
+          <p class="subhead">Red Wing | UGG | Dr. Martens | Converse | Nike</p>
         </div>
         <div class="run-box">
           <span id="status-dot" class="status-dot"></span>
-          <span id="status">Loading status…</span>
+          <span id="status">Loading status...</span>
           <button id="run-now" type="button">Run now</button>
         </div>
       </header>
@@ -24,7 +24,7 @@
       <section class="report-summary">
         <div>
           <p class="label">Report date</p>
-          <p class="report-date" id="report-date">—</p>
+          <p class="report-date" id="report-date">-</p>
         </div>
         <div>
           <p class="label">Capture schedule</p>
@@ -32,7 +32,7 @@
         </div>
         <div class="insight">
           <p class="label">Daily overview</p>
-          <p id="insight">Loading…</p>
+          <p id="insight">Loading...</p>
         </div>
       </section>
 
@@ -41,7 +41,25 @@
         <button id="reload" class="text-button" type="button">Reload</button>
       </section>
 
-      <section id="cards" class="cards" aria-live="polite"></section>
+      <section class="analysis-grid" aria-live="polite">
+        <div class="analysis-column">
+          <div class="column-header">
+            <p class="label">Homepage</p>
+            <h2>Hero Banner Analysis</h2>
+            <p>Campaign message, visual hierarchy, and primary CTA.</p>
+          </div>
+          <section id="hero-cards" class="analysis-cards"></section>
+        </div>
+
+        <div class="analysis-column">
+          <div class="column-header">
+            <p class="label">Product listing page</p>
+            <h2>PLP Analysis</h2>
+            <p>Product assortment and UI/UX that supports product discovery.</p>
+          </div>
+          <section id="plp-cards" class="analysis-cards"></section>
+        </div>
+      </section>
     </main>
 
     <template id="card-template">
@@ -49,21 +67,30 @@
         <div class="card-topline">
           <div>
             <p class="brand"></p>
-            <h2 class="type"></h2>
+            <h3 class="type"></h3>
           </div>
           <span class="priority"></span>
         </div>
-        <a class="source-link" target="_blank" rel="noreferrer">Open source page ↗</a>
-        <a class="full-image-link" target="_blank" rel="noreferrer">Open screenshot ↗</a>
+
+        <div class="card-links">
+          <a class="source-link" target="_blank" rel="noreferrer">Source page</a>
+          <a class="screenshot-link" target="_blank" rel="noreferrer">Open screenshot</a>
+        </div>
+
         <div class="image-wrap">
           <img class="screenshot" alt="" />
           <div class="empty-shot">Waiting for first screenshot</div>
         </div>
-        <section class="summary">
-          <p class="headline"></p>
-          <p class="business-summary"></p>
-          <ul class="changes"></ul>
+
+        <section class="analysis-detail">
+          <p class="analysis-title"></p>
+          <p class="analysis-primary"></p>
+          <p class="analysis-secondary"></p>
+          <ul class="analysis-points"></ul>
         </section>
+
+        <p class="change-headline"></p>
+        <ul class="changes"></ul>
         <p class="captured-at"></p>
       </article>
     </template>

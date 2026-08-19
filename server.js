@@ -15,16 +15,16 @@ const SNAPSHOTS_DIR = path.join(DATA_DIR, "snapshots");
 const CHROME_DEBUG_URL = process.env.CHROME_DEBUG_URL || "http://127.0.0.1:9222";
 
 const targets = [
-  { id: "rw-hero", brand: "Red Wing", type: "Homepage", homepage: true, url: "https://redwingheritage.jp/" },
-  { id: "rw-men", brand: "Red Wing", type: "Men's Category", url: "https://redwingheritage.jp/category/MEN/" },
-  { id: "ugg-hero", brand: "UGG", type: "Homepage", homepage: true, url: "https://www.ugg.com/jp/" },
-  { id: "ugg-men", brand: "UGG", type: "Men's New Arrivals", url: "https://www.ugg.com/jp/men-new-arrivals/" },
-  { id: "dm-hero", brand: "Dr. Martens", type: "Homepage", homepage: true, url: "https://jp.drmartens.com/home" },
-  { id: "dm-new", brand: "Dr. Martens", type: "New Arrivals", url: "https://jp.drmartens.com/all_new/" },
-  { id: "cv-hero", brand: "Converse", type: "Homepage", homepage: true, url: "https://converse.co.jp/" },
-  { id: "cv-men", brand: "Converse", type: "Men's Coming Soon", url: "https://converse.co.jp/collections/soon/mens" },
-  { id: "nike-hero", brand: "Nike", type: "Homepage", homepage: true, url: "https://www.nike.com/jp/" },
-  { id: "nike-men", brand: "Nike", type: "Men's New Shoes", url: "https://www.nike.com/jp/w/new-mens-shoes-3n82yznik1zy7ok" }
+  { id: "rw-hero", brand: "Red Wing", type: "Homepage", kind: "hero", homepage: true, url: "https://redwingheritage.jp/" },
+  { id: "rw-men", brand: "Red Wing", type: "Men's Category", kind: "plp", url: "https://redwingheritage.jp/category/MEN/" },
+  { id: "ugg-hero", brand: "UGG", type: "Homepage", kind: "hero", homepage: true, url: "https://www.ugg.com/jp/" },
+  { id: "ugg-men", brand: "UGG", type: "Men's New Arrivals", kind: "plp", url: "https://www.ugg.com/jp/men-new-arrivals/" },
+  { id: "dm-hero", brand: "Dr. Martens", type: "Homepage", kind: "hero", homepage: true, url: "https://jp.drmartens.com/home" },
+  { id: "dm-new", brand: "Dr. Martens", type: "New Arrivals", kind: "plp", url: "https://jp.drmartens.com/all_new/" },
+  { id: "cv-hero", brand: "Converse", type: "Homepage", kind: "hero", homepage: true, url: "https://converse.co.jp/" },
+  { id: "cv-men", brand: "Converse", type: "Men's Coming Soon", kind: "plp", url: "https://converse.co.jp/collections/soon/mens" },
+  { id: "nike-hero", brand: "Nike", type: "Homepage", kind: "hero", homepage: true, url: "https://www.nike.com/jp/" },
+  { id: "nike-men", brand: "Nike", type: "Men's New Shoes", kind: "plp", url: "https://www.nike.com/jp/w/new-mens-shoes-3n82yznik1zy7ok" }
 ];
 
 let isRunning = false;
@@ -75,13 +75,19 @@ async function ensureDirectories() {
   await Promise.all([DATA_DIR, SCREENSHOTS_DIR, REPORTS_DIR, SNAPSHOTS_DIR].map((directory) => fsp.mkdir(directory, { recursive: true })));
 }
 
-function cleanLines(text) {
+function uniqueShortLines(items, limit = 6) {
   return [...new Set(
-    text.split("\n")
-      .map((line) => line.replace(/\s+/g, " ").trim())
-      .filter((line) => line.length >= 3 && line.length <= 120)
-      .filter((line) => !/^(search|menu|close|log in|sign in|ログイン|検索|メニュー)$/i.test(line))
-  )].slice(0, 100);
+    items
+      .map((item) => String(item || "").replace(/\s+/g, " ").trim())
+      .filter((item) => item.length >= 3 && item.length <= 120)
+  )].slice(0, limit);
+}
+
+function cleanLines(text) {
+  return uniqueShortLines(
+    text.split("\n").filter((line) => !/^(search|menu|close|log in|sign in)$/i.test(line)),
+    100
+  );
 }
 
 function getChanges(previous = [], current = []) {
@@ -93,37 +99,146 @@ function getChanges(previous = [], current = []) {
   };
 }
 
-function createSummary(target, previous, currentLines) {
-  if (!previous?.valid) {
-    return {
-      priority: "Low",
-      headline: "Baseline created",
-      businessSummary: `The first screenshot and visible-text baseline for ${target.brand} ${target.type} has been captured. Changes will be compared from the next run.`,
-      changes: []
+async function extractPageSignals(page, kind) {
+  return page.evaluate((pageKind) => {
+    const text = (element) => (element?.innerText || element?.textContent || "").replace(/\s+/g, " ").trim();
+    const isVisible = (element) => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.visibility !== "hidden" && style.display !== "none" && rect.width > 0 && rect.height > 0;
     };
-  }
-
-  const { added, removed } = getChanges(previous.visibleLines || [], currentLines);
-  if (added.length === 0 && removed.length === 0) {
-    return {
-      priority: "Low",
-      headline: "No visible text changes detected",
-      businessSummary: `No visible headline, product, or promotion copy changes were detected on ${target.brand} ${target.type}.`,
-      changes: []
+    const inViewport = (element) => {
+      const rect = element.getBoundingClientRect();
+      return isVisible(element) && rect.top < window.innerHeight && rect.bottom > 0;
     };
-  }
+    const collect = (selector, predicate, limit = 8) => {
+      const output = [];
+      for (const element of document.querySelectorAll(selector)) {
+        if (!predicate(element)) continue;
+        const value = text(element);
+        if (value) output.push(value);
+        if (output.length >= limit) break;
+      }
+      return [...new Set(output)];
+    };
 
-  const changes = [
-    ...added.map((line) => `Added: ${line}`),
-    ...removed.map((line) => `Removed: ${line}`)
+    const headings = collect("h1, h2, h3, [role='heading']", inViewport, 5);
+    const actions = collect("a, button", inViewport, 6);
+    const bodyText = text(document.body);
+    const hasFilter = /\b(filter|filters|size|color|category|collection)\b/i.test(bodyText);
+    const hasSort = /\b(sort|sort by|recommended|newest|price)\b/i.test(bodyText);
+    const hasSearch = /\b(search|search products)\b/i.test(bodyText);
+    const hasPromo = /\b(new|sale|limited|exclusive|discount|off)\b/i.test(bodyText);
+
+    if (pageKind === "hero") {
+      return {
+        headings,
+        actions,
+        hasPromo,
+        visibleImageCount: [...document.images].filter(inViewport).length
+      };
+    }
+
+    const main = document.querySelector("main") || document.body;
+    const productLinks = collect("main a, [role='main'] a", (element) => {
+      if (!isVisible(element)) return false;
+      const href = element.getAttribute("href") || "";
+      return /product|products|item|style|shoe|boot|sneaker/i.test(href) && text(element).length >= 3;
+    }, 12);
+    const productImages = [...main.querySelectorAll("img")].filter(isVisible).map((image) => image.alt).filter(Boolean).slice(0, 12);
+
+    return {
+      headings,
+      productLinks,
+      productImages,
+      hasFilter,
+      hasSort,
+      hasSearch,
+      hasPromo,
+      visibleImageCount: [...main.querySelectorAll("img")].filter(isVisible).length
+    };
+  }, kind);
+}
+
+function productTypeSummary(signals, fallbackType) {
+  const source = uniqueShortLines([...(signals.productLinks || []), ...(signals.productImages || []), ...(signals.headings || [])], 18).join(" ");
+  const categories = [
+    ["boots", /\bboot|moc\b/i],
+    ["shoes", /\bshoe|sneaker|trainer|loafer|oxford|slip-on\b/i],
+    ["sandals", /\bsandal|slide|slipper\b/i],
+    ["apparel", /\bshirt|jacket|hoodie|pant|short|dress|apparel\b/i],
+    ["accessories", /\bbag|cap|hat|sock|accessor/i]
+  ].filter(([, pattern]) => pattern.test(source)).map(([name]) => name);
+
+  if (categories.length > 0) return `Visible assortment includes ${categories.join(", ")}.`;
+  if (signals.headings?.[0]) return `The page is organized around "${signals.headings[0]}".`;
+  return `The page presents the ${fallbackType.toLowerCase()} assortment through a product grid.`;
+}
+
+function createHeroAnalysis(target, signals) {
+  const heroMessage = signals.headings?.[0] || "Visual-led homepage message";
+  const supportingMessage = signals.headings?.slice(1, 3).join(" | ") || "Supporting copy is presented within the opening visual.";
+  const ctas = uniqueShortLines(signals.actions || [], 3).filter((action) => action.length <= 40);
+  const actionText = ctas.length ? `Primary actions visible: ${ctas.join(" / ")}.` : "A direct action path is provided from the opening visual.";
+  const uxPoints = [
+    "Large visual treatment establishes the campaign or product mood before the user scrolls.",
+    `Message hierarchy prioritizes "${heroMessage}".`,
+    actionText
   ];
-  const highPriorityPattern = /(new arrival|new|sale|discount|off|collab|collaboration|limited|campaign|free shipping|発売|新着|新作|セール|限定|コラボ)/i;
-  const priority = changes.some((line) => highPriorityPattern.test(line)) ? "High" : "Medium";
+  if (signals.hasPromo) uxPoints.push("Promotional or newness language helps make the commercial message immediately scannable.");
 
   return {
-    priority,
+    title: "Hero banner analysis",
+    primary: heroMessage,
+    secondary: supportingMessage,
+    points: uxPoints.slice(0, 4)
+  };
+}
+
+function createPlpAnalysis(target, signals) {
+  const uxPoints = [];
+  if (signals.hasFilter) uxPoints.push("Filtering controls help shoppers narrow the assortment by relevant attributes.");
+  if (signals.hasSort) uxPoints.push("Sorting options support quick comparison by priority such as newness or price.");
+  if (signals.visibleImageCount > 0) uxPoints.push("Product imagery in the grid supports fast visual scanning before a product-detail visit.");
+  if (signals.hasPromo) uxPoints.push("Newness or promotional labels make commercial highlights easier to identify.");
+  if (signals.hasSearch) uxPoints.push("Search access gives shoppers a direct route when browsing alone is not efficient.");
+  if (uxPoints.length === 0) uxPoints.push("The page uses a structured assortment layout to help shoppers browse and compare products.");
+
+  return {
+    title: "PLP analysis",
+    primary: productTypeSummary(signals, target.type),
+    secondary: signals.headings?.slice(0, 2).join(" | ") || "Product listing page",
+    points: uxPoints.slice(0, 4)
+  };
+}
+
+function fallbackAnalysis(target) {
+  if (target.kind === "hero") {
+    return {
+      title: "Hero banner analysis",
+      primary: "Existing homepage screenshot available.",
+      secondary: "Run a new capture to generate hero-message and CTA analysis.",
+      points: ["The next capture will inspect the visible hero message, visual hierarchy, and CTA treatment."]
+    };
+  }
+  return {
+    title: "PLP analysis",
+    primary: "Existing product listing screenshot available.",
+    secondary: "Run a new capture to identify product types and page-level shopping aids.",
+    points: ["The next capture will inspect product assortment, filters, sorting, and visual browsing aids."]
+  };
+}
+
+function createChangeSummary(target, previous, visibleLines) {
+  if (!previous?.valid) return { priority: "Low", headline: "Baseline created", changes: [] };
+  const { added, removed } = getChanges(previous.visibleLines || [], visibleLines);
+  if (added.length === 0 && removed.length === 0) return { priority: "Low", headline: "No visible text changes detected", changes: [] };
+
+  const changes = [...added.map((line) => `Added: ${line}`), ...removed.map((line) => `Removed: ${line}`)];
+  const highPriorityPattern = /(new arrival|new|sale|discount|off|collab|collaboration|limited|campaign|free shipping)/i;
+  return {
+    priority: changes.some((line) => highPriorityPattern.test(line)) ? "High" : "Medium",
     headline: "Page content update detected",
-    businessSummary: `${target.brand} ${target.type} has ${added.length} added and ${removed.length} removed visible-text items. Review the screenshot to confirm whether the update relates to new products, hero products, or promotions.`,
     changes
   };
 }
@@ -138,21 +253,15 @@ async function readJson(filePath) {
 }
 
 async function captureTarget(browser, target, date) {
-  const page = await browser.newPage({
-    viewport: { width: 1440, height: 900 },
-    deviceScaleFactor: 1
-  });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const snapshotPath = path.join(SNAPSHOTS_DIR, `${target.id}.json`);
   const previous = await readJson(snapshotPath);
-  const mode = getScreenshotMode(target);
+  const screenshotMode = getScreenshotMode(target);
   const screenshotName = `${target.id}.png`;
 
   try {
     page.setDefaultTimeout(15000);
-    const navigation = await page.goto(target.url, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000
-    });
+    const navigation = await page.goto(target.url, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForTimeout(2500);
     await page.evaluate(() => {
       document.querySelectorAll('[id*="cookie" i], [class*="cookie" i], [id*="consent" i], [class*="consent" i]').forEach((element) => {
@@ -168,26 +277,31 @@ async function captureTarget(browser, target, date) {
     }
 
     const visibleLines = cleanLines(visibleText);
+    const signals = await extractPageSignals(page, target.kind);
+    const analysis = target.kind === "hero" ? createHeroAnalysis(target, signals) : createPlpAnalysis(target, signals);
     const screenshotFile = path.join(SCREENSHOTS_DIR, date, screenshotName);
-    await page.screenshot({ path: screenshotFile, fullPage: mode === "full-page" });
+    await page.screenshot({ path: screenshotFile, fullPage: screenshotMode === "full-page" });
 
-    const currentSnapshot = {
+    const snapshot = {
       capturedAt: new Date().toISOString(),
       visibleLines,
       screenshot: `/screenshots/${date}/${screenshotName}`,
-      screenshotMode: mode,
+      screenshotMode,
+      analysis,
       valid: true
     };
-    await fsp.writeFile(snapshotPath, JSON.stringify(currentSnapshot, null, 2), "utf8");
+    await fsp.writeFile(snapshotPath, JSON.stringify(snapshot, null, 2), "utf8");
 
+    const changeSummary = createChangeSummary(target, previous, visibleLines);
     return {
       ...target,
       status: "success",
-      capturedAt: currentSnapshot.capturedAt,
-      screenshot: currentSnapshot.screenshot,
+      capturedAt: snapshot.capturedAt,
+      screenshot: snapshot.screenshot,
       previousScreenshot: previous?.valid ? previous.screenshot : null,
-      screenshotMode: mode,
-      ...createSummary(target, previous, visibleLines)
+      screenshotMode,
+      analysis,
+      ...changeSummary
     };
   } catch (error) {
     return {
@@ -195,10 +309,10 @@ async function captureTarget(browser, target, date) {
       status: "error",
       capturedAt: new Date().toISOString(),
       screenshot: previous?.valid ? previous.screenshot : null,
-      screenshotMode: previous?.screenshotMode || mode,
+      screenshotMode: previous?.screenshotMode || screenshotMode,
+      analysis: previous?.analysis || fallbackAnalysis(target),
       priority: "Low",
       headline: "Capture failed",
-      businessSummary: `The page could not be captured: ${error.message}`,
       changes: []
     };
   } finally {
@@ -209,9 +323,9 @@ async function captureTarget(browser, target, date) {
 function reportInsight(items) {
   const changed = items.filter((item) => item.status === "success" && item.changes.length > 0);
   const highPriority = changed.filter((item) => item.priority === "High");
-  if (changed.length === 0) return "No visible text changes were detected today; screenshots have been refreshed.";
-  if (highPriority.length > 0) return `${highPriority.length} high-priority page update(s) were detected today. Review new products, promotions, and campaign copy first.`;
-  return `${changed.length} page(s) showed content updates today, mainly in product information or page copy.`;
+  if (changed.length === 0) return "No visible text changes were detected today. Review the hero and PLP analyses for the current merchandising approach.";
+  if (highPriority.length > 0) return `${highPriority.length} high-priority update(s) detected. Review new products, promotional language, and hero-message changes first.`;
+  return `${changed.length} page(s) showed visible content updates. Check the relevant hero or PLP analysis for current context.`;
 }
 
 async function connectBrowser() {
@@ -220,7 +334,6 @@ async function connectBrowser() {
     console.log(`Connected to monitoring Chrome: ${CHROME_DEBUG_URL}`);
     return { browser, browserMode: "Google Chrome (dedicated monitoring profile)", closeWhenDone: false };
   } catch {
-    console.warn(`Monitoring Chrome is unavailable at ${CHROME_DEBUG_URL}; using isolated Chromium.`);
     const browser = await chromium.launch({ headless: true });
     return { browser, browserMode: "Isolated Chromium (fallback)", closeWhenDone: true };
   }
@@ -263,7 +376,6 @@ async function runMonitoring() {
 function waitingReport() {
   return {
     date: tokyoDate(),
-    generatedAt: null,
     scheduledTime: "11:00 JST",
     capturePlan: isMondayTokyo() ? "Monday full-page homepage archive" : "Daily viewport capture",
     insight: "Waiting for the first capture at 11:00 JST.",
@@ -272,10 +384,10 @@ function waitingReport() {
       status: "waiting",
       priority: "Low",
       headline: "Waiting for first capture",
-      businessSummary: "The system captures screenshots and generates a summary every day at 11:00 JST.",
       changes: [],
       screenshot: null,
-      screenshotMode: getScreenshotMode(target)
+      screenshotMode: getScreenshotMode(target),
+      analysis: fallbackAnalysis(target)
     }))
   };
 }
@@ -283,31 +395,20 @@ function waitingReport() {
 function normalizeReport(report) {
   const targetById = new Map(targets.map((target) => [target.id, target]));
   const items = (report.items || []).map((item) => {
-    const target = targetById.get(item.id);
-    const priority = ["High", "Medium", "Low"].includes(item.priority) ? item.priority : "Low";
-    const hasLegacyCopy = /[\uFFFD\u3040-\u30ff\u3400-\u9fff]/.test(`${item.headline || ""}${item.businessSummary || ""}`);
-    const defaultHeadline = item.status === "error" ? "Capture failed" : "Existing screenshot available";
-    const defaultSummary = item.status === "error"
-      ? "The previous capture failed. Run the dashboard again to refresh this result."
-      : "This is an existing screenshot from the last completed capture. The next run will generate an English summary.";
-
+    const target = targetById.get(item.id) || item;
     return {
       ...item,
-      ...(target || {}),
-      priority,
-      headline: hasLegacyCopy ? defaultHeadline : (item.headline || defaultHeadline),
-      businessSummary: hasLegacyCopy ? defaultSummary : (item.businessSummary || defaultSummary),
-      changes: hasLegacyCopy ? [] : (item.changes || []),
-      screenshotMode: item.screenshotMode || getScreenshotMode(target || item)
+      ...target,
+      priority: ["High", "Medium", "Low"].includes(item.priority) ? item.priority : "Low",
+      analysis: item.analysis || fallbackAnalysis(target),
+      screenshotMode: item.screenshotMode || getScreenshotMode(target),
+      changes: item.changes || []
     };
   });
-
   return {
     ...report,
     capturePlan: report.capturePlan || (isMondayTokyo() ? "Monday full-page homepage archive" : "Daily viewport capture"),
-    insight: /[\uFFFD\u3040-\u30ff\u3400-\u9fff]/.test(report.insight || "")
-      ? "Existing screenshots are available. The next capture will generate an English daily overview."
-      : (report.insight || reportInsight(items)),
+    insight: report.insight || reportInsight(items),
     items
   };
 }
@@ -316,9 +417,7 @@ async function latestReport() {
   const today = await readJson(path.join(REPORTS_DIR, `${tokyoDate()}.json`));
   if (today) return normalizeReport(today);
   const files = (await fsp.readdir(REPORTS_DIR)).filter((file) => file.endsWith(".json")).sort().reverse();
-  return files.length > 0
-    ? normalizeReport(await readJson(path.join(REPORTS_DIR, files[0])))
-    : waitingReport();
+  return files.length ? normalizeReport(await readJson(path.join(REPORTS_DIR, files[0]))) : waitingReport();
 }
 
 const mimeTypes = {
@@ -330,10 +429,7 @@ const mimeTypes = {
 };
 
 function sendJson(response, status, payload) {
-  response.writeHead(status, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store"
-  });
+  response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
   response.end(JSON.stringify(payload));
 }
 

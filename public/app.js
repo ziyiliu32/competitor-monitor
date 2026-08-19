@@ -1,10 +1,11 @@
-const cards = document.querySelector("#cards");
+const heroCards = document.querySelector("#hero-cards");
+const plpCards = document.querySelector("#plp-cards");
 const template = document.querySelector("#card-template");
 const runButton = document.querySelector("#run-now");
 const reloadButton = document.querySelector("#reload");
 
 function displayDate(date) {
-  if (!date) return "—";
+  if (!date) return "-";
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Tokyo",
     year: "numeric",
@@ -30,9 +31,63 @@ function priorityClass(priority) {
   return priority === "High" ? "high" : priority === "Medium" ? "medium" : "low";
 }
 
-function legacyPriority(priority) {
-  if (priority === "High" || priority === "Medium" || priority === "Low") return priority;
-  return "Low";
+function createCard(item) {
+  const node = template.content.cloneNode(true);
+  node.querySelector(".brand").textContent = item.brand;
+  node.querySelector(".type").textContent = item.type;
+
+  const priority = node.querySelector(".priority");
+  priority.textContent = `${item.priority || "Low"} priority`;
+  priority.classList.add(priorityClass(item.priority));
+
+  const sourceLink = node.querySelector(".source-link");
+  sourceLink.href = item.url;
+
+  const screenshotLink = node.querySelector(".screenshot-link");
+  if (item.screenshot) {
+    screenshotLink.href = item.screenshot;
+  } else {
+    screenshotLink.remove();
+  }
+
+  const screenshot = node.querySelector(".screenshot");
+  const emptyShot = node.querySelector(".empty-shot");
+  if (item.screenshot) {
+    if (item.screenshotMode === "full-page") node.querySelector(".image-wrap").classList.add("full-page");
+    screenshot.src = item.screenshot;
+    screenshot.alt = `${item.brand} ${item.type} screenshot`;
+    emptyShot.remove();
+  } else {
+    screenshot.remove();
+  }
+
+  const analysis = item.analysis || {};
+  node.querySelector(".analysis-title").textContent = analysis.title || "Page analysis";
+  node.querySelector(".analysis-primary").textContent = analysis.primary || "Analysis will be available after the next capture.";
+  node.querySelector(".analysis-secondary").textContent = analysis.secondary || "";
+
+  const analysisPoints = node.querySelector(".analysis-points");
+  for (const point of analysis.points || []) {
+    const listItem = document.createElement("li");
+    listItem.textContent = point;
+    analysisPoints.append(listItem);
+  }
+  if (!analysis.points?.length) analysisPoints.remove();
+
+  const changeHeadline = node.querySelector(".change-headline");
+  changeHeadline.textContent = item.headline || "";
+  if (!item.headline) changeHeadline.remove();
+
+  const changes = node.querySelector(".changes");
+  for (const change of item.changes || []) {
+    const listItem = document.createElement("li");
+    listItem.textContent = change;
+    changes.append(listItem);
+  }
+  if (!item.changes?.length) changes.remove();
+
+  node.querySelector(".captured-at").textContent = `Captured: ${displayTimestamp(item.capturedAt)}`;
+  return node;
 }
 
 function render(report) {
@@ -41,55 +96,14 @@ function render(report) {
 
   const changed = report.items.filter((item) => item.changes?.length > 0).length;
   const errors = report.items.filter((item) => item.status === "error").length;
-  document.querySelector("#counts").textContent = `${report.items.length} pages · ${changed} with content changes${errors ? ` · ${errors} capture failures` : ""}`;
+  document.querySelector("#counts").textContent =
+    `${report.items.length} pages | ${changed} with content changes${errors ? ` | ${errors} capture failures` : ""}`;
 
-  cards.replaceChildren();
+  heroCards.replaceChildren();
+  plpCards.replaceChildren();
   for (const item of report.items) {
-    const node = template.content.cloneNode(true);
-    node.querySelector(".brand").textContent = item.brand;
-    node.querySelector(".type").textContent = item.type;
-
-    const priorityValue = legacyPriority(item.priority);
-    const priority = node.querySelector(".priority");
-    priority.textContent = `${priorityValue} priority`;
-    priority.classList.add(priorityClass(priorityValue));
-
-    const sourceLink = node.querySelector(".source-link");
-    sourceLink.href = item.url;
-
-    const fullImageLink = node.querySelector(".full-image-link");
-    if (item.screenshot) {
-      fullImageLink.href = item.screenshot;
-    } else {
-      fullImageLink.remove();
-    }
-
-    node.querySelector(".headline").textContent = item.headline || "No summary available";
-    node.querySelector(".business-summary").textContent = item.businessSummary || "No business summary available.";
-    node.querySelector(".captured-at").textContent = `Captured: ${displayTimestamp(item.capturedAt)}`;
-
-    const screenshot = node.querySelector(".screenshot");
-    const empty = node.querySelector(".empty-shot");
-    if (item.screenshot) {
-      if (item.screenshotMode === "full-page") node.querySelector(".image-wrap").classList.add("full-page");
-      screenshot.src = item.screenshot;
-      screenshot.alt = `${item.brand} ${item.type} screenshot`;
-      empty.remove();
-    } else {
-      screenshot.remove();
-    }
-
-    const changes = node.querySelector(".changes");
-    if (item.changes?.length) {
-      for (const change of item.changes) {
-        const listItem = document.createElement("li");
-        listItem.textContent = change;
-        changes.append(listItem);
-      }
-    } else {
-      changes.remove();
-    }
-    cards.append(node);
+    const destination = item.kind === "plp" ? plpCards : heroCards;
+    destination.append(createCard(item));
   }
 }
 
@@ -103,16 +117,15 @@ async function refreshStatus() {
   const response = await fetch("/api/status", { cache: "no-store" });
   const status = await response.json();
   const dot = document.querySelector("#status-dot");
-  const label = document.querySelector("#status");
   dot.className = `status-dot ${status.isRunning ? "running" : "ready"}`;
-  label.textContent = status.isRunning ? "Capturing pages…" : "System ready";
+  document.querySelector("#status").textContent = status.isRunning ? "Capturing pages..." : "System ready";
   runButton.disabled = status.isRunning;
-  runButton.textContent = status.isRunning ? "Running…" : "Run now";
+  runButton.textContent = status.isRunning ? "Running..." : "Run now";
 }
 
 runButton.addEventListener("click", async () => {
   runButton.disabled = true;
-  runButton.textContent = "Starting…";
+  runButton.textContent = "Starting...";
   const response = await fetch("/api/run", { method: "POST" });
   if (!response.ok) alert("Unable to start the capture run. Check the server logs.");
 
