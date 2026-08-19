@@ -33,13 +33,16 @@ h1 { font-size: clamp(32px, 4vw, 56px); letter-spacing: -.055em; line-height: 1;
 .counts { color: var(--muted); font-size: 13px; }
 .text-button { background: none; border: 0; color: var(--accent); padding: 0; font-weight: 700; }
 
-.analysis-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; align-items: start; }
-.analysis-column { min-width: 0; }
-.analysis-column + .analysis-column { border-left: 1px solid var(--line); padding-left: 28px; }
-.column-header { margin: 4px 0 18px; }
-.column-header h2 { margin: 6px 0 5px; font-size: 24px; letter-spacing: -.035em; }
-.column-header p:last-child { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
-.analysis-cards { display: grid; gap: 18px; }
+.column-headings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin: 4px 0 18px; }
+.column-headings > div + div { border-left: 1px solid var(--line); padding-left: 28px; }
+.column-headings h2 { margin: 6px 0 5px; font-size: 24px; letter-spacing: -.035em; }
+.column-headings p:last-child { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.brand-pairs { display: grid; gap: 24px; }
+.brand-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; position: relative; padding-top: 26px; }
+.pair-brand { position: absolute; top: 0; left: 0; margin: 0; color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.pair-card { min-width: 0; }
+.pair-card + .pair-card { border-left: 1px solid var(--line); padding-left: 28px; }
+.brand-pair .card { height: 100%; }
 
 .card { background: var(--paper); border: 1px solid var(--line); padding: 20px; min-width: 0; }
 .card-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -70,6 +73,7 @@ h3 { margin: 5px 0 0; font-size: 20px; letter-spacing: -.03em; }
   .shell { padding: 28px 18px 48px; }
   .masthead, .report-summary { display: block; }
   .run-box, .report-summary > div { margin-top: 18px; }
-  .analysis-grid { grid-template-columns: 1fr; }
-  .analysis-column + .analysis-column { border-left: 0; border-top: 1px solid var(--line); padding: 28px 0 0; }
+  .column-headings, .brand-pair { grid-template-columns: 1fr; }
+  .column-headings > div + div, .pair-card + .pair-card { border-left: 0; border-top: 1px solid var(--line); padding: 24px 0 0; }
+  .brand-pair { gap: 18px; }
 }

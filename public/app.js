@@ -1,5 +1,4 @@
-const heroCards = document.querySelector("#hero-cards");
-const plpCards = document.querySelector("#plp-cards");
+const brandPairs = document.querySelector("#brand-pairs");
 const template = document.querySelector("#card-template");
 const runButton = document.querySelector("#run-now");
 const reloadButton = document.querySelector("#reload");
@@ -99,11 +98,28 @@ function render(report) {
   document.querySelector("#counts").textContent =
     `${report.items.length} pages | ${changed} with content changes${errors ? ` | ${errors} capture failures` : ""}`;
 
-  heroCards.replaceChildren();
-  plpCards.replaceChildren();
-  for (const item of report.items) {
-    const destination = item.kind === "plp" ? plpCards : heroCards;
-    destination.append(createCard(item));
+  const brands = [...new Set(report.items.map((item) => item.brand))];
+  brandPairs.replaceChildren();
+
+  for (const brand of brands) {
+    const pair = document.createElement("section");
+    pair.className = "brand-pair";
+
+    const label = document.createElement("p");
+    label.className = "pair-brand";
+    label.textContent = brand;
+    pair.append(label);
+
+    const hero = report.items.find((item) => item.brand === brand && item.kind === "hero");
+    const plp = report.items.find((item) => item.brand === brand && item.kind === "plp");
+    const heroSlot = document.createElement("div");
+    const plpSlot = document.createElement("div");
+    heroSlot.className = "pair-card";
+    plpSlot.className = "pair-card";
+    if (hero) heroSlot.append(createCard(hero));
+    if (plp) plpSlot.append(createCard(plp));
+    pair.append(heroSlot, plpSlot);
+    brandPairs.append(pair);
   }
 }
 

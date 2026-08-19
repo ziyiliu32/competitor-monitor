@@ -41,25 +41,20 @@
         <button id="reload" class="text-button" type="button">Reload</button>
       </section>
 
-      <section class="analysis-grid" aria-live="polite">
-        <div class="analysis-column">
-          <div class="column-header">
-            <p class="label">Homepage</p>
-            <h2>Hero Banner Analysis</h2>
-            <p>Campaign message, visual hierarchy, and primary CTA.</p>
-          </div>
-          <section id="hero-cards" class="analysis-cards"></section>
+      <section class="column-headings">
+        <div>
+          <p class="label">Homepage</p>
+          <h2>Hero Banner Analysis</h2>
+          <p>Campaign message, visual hierarchy, and primary CTA.</p>
         </div>
-
-        <div class="analysis-column">
-          <div class="column-header">
-            <p class="label">Product listing page</p>
-            <h2>PLP Analysis</h2>
-            <p>Product assortment and UI/UX that supports product discovery.</p>
-          </div>
-          <section id="plp-cards" class="analysis-cards"></section>
+        <div>
+          <p class="label">Product listing page</p>
+          <h2>PLP Analysis</h2>
+          <p>Product assortment and UI/UX that supports product discovery.</p>
         </div>
       </section>
+
+      <section id="brand-pairs" class="brand-pairs" aria-live="polite"></section>
     </main>
 
     <template id="card-template">
