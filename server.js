@@ -252,6 +252,32 @@ async function readJson(filePath) {
   }
 }
 
+async function waitForHeroMedia(page, target) {
+  if (target.id !== "nike-hero") return;
+
+  await page.waitForFunction(() => {
+    return [...document.images].some((image) => {
+      const rect = image.getBoundingClientRect();
+      return (
+        image.complete &&
+        image.naturalWidth > 800 &&
+        rect.top >= 0 &&
+        rect.top < window.innerHeight &&
+        rect.width > 1000 &&
+        rect.height > 400
+      );
+    });
+  }, { timeout: 15000 });
+
+  await page.locator("img").evaluateAll(async (images) => {
+    const hero = images.find((image) => {
+      const rect = image.getBoundingClientRect();
+      return image.complete && image.naturalWidth > 800 && rect.top >= 0 && rect.top < window.innerHeight && rect.height > 400;
+    });
+    await hero?.decode?.().catch(() => undefined);
+  });
+}
+
 async function captureTarget(browser, target, date) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const snapshotPath = path.join(SNAPSHOTS_DIR, `${target.id}.json`);
@@ -268,6 +294,7 @@ async function captureTarget(browser, target, date) {
         element.style.setProperty("display", "none", "important");
       });
     });
+    await waitForHeroMedia(page, target);
 
     const visibleText = await page.locator("body").innerText();
     const title = await page.title();
