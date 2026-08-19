@@ -91,7 +91,22 @@ function createCard(item) {
 
 function render(report) {
   document.querySelector("#report-date").textContent = displayDate(report.date);
-  document.querySelector("#insight").textContent = report.insight || "No daily overview is available yet.";
+  const overview = report.heroOverview || { headline: report.insight, updates: [] };
+  document.querySelector("#insight").textContent = overview.headline || report.insight || "No daily overview is available yet.";
+  const heroOverview = document.querySelector("#hero-overview");
+  heroOverview.replaceChildren();
+  for (const update of overview.updates || []) {
+    const item = document.createElement("li");
+    const messageChange = update.previousMessage && update.currentMessage
+      ? `${update.brand}: "${update.previousMessage}" -> "${update.currentMessage}".`
+      : `${update.brand}: homepage hero content updated.`;
+    const addedCopy = update.addedCopy?.length
+      ? ` New visible content: ${update.addedCopy.map((copy) => `"${copy}"`).join(", ")}.`
+      : "";
+    item.textContent = `${messageChange}${addedCopy}`;
+    heroOverview.append(item);
+  }
+  if (!(overview.updates || []).length) heroOverview.remove();
 
   const changed = report.items.filter((item) => item.changes?.length > 0).length;
   const errors = report.items.filter((item) => item.status === "error").length;

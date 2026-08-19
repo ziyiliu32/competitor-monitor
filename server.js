@@ -243,6 +243,43 @@ function createChangeSummary(target, previous, visibleLines) {
   };
 }
 
+function createHeroUpdate(target, previous, analysis, changeSummary) {
+  if (target.kind !== "hero" || !previous?.valid) return null;
+
+  const previousMessage = previous.analysis?.primary || "";
+  const currentMessage = analysis?.primary || "";
+  const messageChanged = previousMessage && currentMessage && previousMessage !== currentMessage;
+  const addedCopy = (changeSummary.changes || [])
+    .filter((change) => change.startsWith("Added: "))
+    .map((change) => change.replace("Added: ", ""))
+    .filter((copy) => copy !== currentMessage)
+    .slice(0, 2);
+
+  if (!messageChanged && addedCopy.length === 0) return null;
+
+  return {
+    brand: target.brand,
+    previousMessage,
+    currentMessage,
+    addedCopy
+  };
+}
+
+function heroOverview(items) {
+  const updates = items.map((item) => item.heroUpdate).filter(Boolean);
+  if (updates.length === 0) {
+    return {
+      headline: "No homepage hero changes detected today.",
+      updates: []
+    };
+  }
+
+  return {
+    headline: `${updates.length} homepage hero change(s) detected today.`,
+    updates
+  };
+}
+
 async function readJson(filePath) {
   try {
     return JSON.parse(await fsp.readFile(filePath, "utf8"));
@@ -320,6 +357,7 @@ async function captureTarget(browser, target, date) {
     await fsp.writeFile(snapshotPath, JSON.stringify(snapshot, null, 2), "utf8");
 
     const changeSummary = createChangeSummary(target, previous, visibleLines);
+    const heroUpdate = createHeroUpdate(target, previous, analysis, changeSummary);
     return {
       ...target,
       status: "success",
@@ -328,6 +366,7 @@ async function captureTarget(browser, target, date) {
       previousScreenshot: previous?.valid ? previous.screenshot : null,
       screenshotMode,
       analysis,
+      heroUpdate,
       ...changeSummary
     };
   } catch (error) {
@@ -338,6 +377,7 @@ async function captureTarget(browser, target, date) {
       screenshot: previous?.valid ? previous.screenshot : null,
       screenshotMode: previous?.screenshotMode || screenshotMode,
       analysis: previous?.analysis || fallbackAnalysis(target),
+      heroUpdate: null,
       priority: "Low",
       headline: "Capture failed",
       changes: []
@@ -387,6 +427,7 @@ async function runMonitoring() {
       capturePlan: isMondayTokyo() ? "Monday full-page homepage archive" : "Daily viewport capture",
       browserMode,
       insight: reportInsight(items),
+      heroOverview: heroOverview(items),
       items
     };
     await fsp.writeFile(path.join(REPORTS_DIR, `${date}.json`), JSON.stringify(report, null, 2), "utf8");
@@ -406,6 +447,10 @@ function waitingReport() {
     scheduledTime: "11:00 JST",
     capturePlan: isMondayTokyo() ? "Monday full-page homepage archive" : "Daily viewport capture",
     insight: "Waiting for the first capture at 11:00 JST.",
+    heroOverview: {
+      headline: "Waiting for the first capture.",
+      updates: []
+    },
     items: targets.map((target) => ({
       ...target,
       status: "waiting",
@@ -436,6 +481,7 @@ function normalizeReport(report) {
     ...report,
     capturePlan: report.capturePlan || (isMondayTokyo() ? "Monday full-page homepage archive" : "Daily viewport capture"),
     insight: report.insight || reportInsight(items),
+    heroOverview: report.heroOverview || heroOverview(items),
     items
   };
 }
