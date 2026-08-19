@@ -27,7 +27,9 @@ const targets = [
   { id: "cv-hero", brand: "Converse", type: "Homepage", kind: "hero", homepage: true, url: "https://converse.co.jp/" },
   { id: "cv-men", brand: "Converse", type: "Men's Coming Soon", kind: "plp", url: "https://converse.co.jp/collections/soon/mens" },
   { id: "nike-hero", brand: "Nike", type: "Homepage", kind: "hero", homepage: true, url: "https://www.nike.com/jp/" },
-  { id: "nike-men", brand: "Nike", type: "Men's New Shoes", kind: "plp", url: "https://www.nike.com/jp/w/new-mens-shoes-3n82yznik1zy7ok" }
+  { id: "nike-men", brand: "Nike", type: "Men's New Shoes", kind: "plp", url: "https://www.nike.com/jp/w/new-mens-shoes-3n82yznik1zy7ok" },
+  { id: "nb-sale", brand: "New Balance", type: "Sale Landing Page", kind: "hero", homepage: true, url: "https://shop.newbalance.jp/sale/" },
+  { id: "nb-new", brand: "New Balance", type: "New Arrivals", kind: "plp", url: "https://shop.newbalance.jp/new-arrivals/" }
 ];
 
 let isRunning = false;
