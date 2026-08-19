@@ -29,7 +29,7 @@ const targets = [
   { id: "nike-hero", brand: "Nike", type: "Homepage", kind: "hero", homepage: true, url: "https://www.nike.com/jp/" },
   { id: "nike-men", brand: "Nike", type: "Men's New Shoes", kind: "plp", url: "https://www.nike.com/jp/w/new-mens-shoes-3n82yznik1zy7ok" },
   { id: "nb-sale", brand: "New Balance", type: "Sale Landing Page", kind: "hero", homepage: true, url: "https://shop.newbalance.jp/sale/" },
-  { id: "nb-new", brand: "New Balance", type: "New Arrivals", kind: "plp", url: "https://shop.newbalance.jp/new-arrivals/" }
+  { id: "nb-new", brand: "New Balance", type: "New Arrivals", kind: "plp", screenshotScrollY: 640, url: "https://shop.newbalance.jp/new-arrivals/" }
 ];
 
 let isRunning = false;
@@ -354,6 +354,16 @@ async function captureTarget(browser, target, date) {
     const signals = await extractPageSignals(page, target.kind);
     const analysis = target.kind === "hero" ? createHeroAnalysis(target, signals) : createPlpAnalysis(target, signals);
     const screenshotFile = path.join(SCREENSHOTS_DIR, date, screenshotName);
+    if (target.screenshotScrollY) {
+      await page.evaluate((scrollY) => {
+        window.scrollTo(0, scrollY);
+        document.documentElement.scrollTop = scrollY;
+        document.body.scrollTop = scrollY;
+        if (document.scrollingElement) document.scrollingElement.scrollTop = scrollY;
+      }, target.screenshotScrollY);
+      await page.waitForFunction((scrollY) => window.scrollY >= scrollY - 10, target.screenshotScrollY, { timeout: 5000 });
+      await page.waitForTimeout(700);
+    }
     await page.screenshot({ path: screenshotFile, fullPage: screenshotMode === "full-page" });
 
     const snapshot = {
@@ -448,8 +458,27 @@ async function runMonitoring() {
     await fsp.mkdir(path.join(SCREENSHOTS_DIR, date), { recursive: true });
     const { browser, browserMode, closeWhenDone } = await connectBrowser();
     const items = [];
-    for (const target of targets) items.push(await captureTarget(browser, target, date));
+    const selectedIds = new Set((process.env.MONITOR_TARGET_IDS || "").split(",").map((id) => id.trim()).filter(Boolean));
+    const activeTargets = selectedIds.size ? targets.filter((target) => selectedIds.has(target.id)) : targets;
+    for (const target of activeTargets) items.push(await captureTarget(browser, target, date));
     if (closeWhenDone) await browser.close();
+
+    let reportItems = items;
+    if (selectedIds.size) {
+      const existingReport = await readJson(path.join(REPORTS_DIR, `${date}.json`));
+      const existingById = new Map((existingReport?.items || []).map((item) => [item.id, item]));
+      const newById = new Map(items.map((item) => [item.id, item]));
+      reportItems = targets.map((target) => newById.get(target.id) || existingById.get(target.id) || {
+        ...target,
+        status: "waiting",
+        priority: "Low",
+        headline: "Waiting for first capture",
+        changes: [],
+        screenshot: null,
+        screenshotMode: getScreenshotMode(target),
+        analysis: fallbackAnalysis(target)
+      });
+    }
 
     const report = {
       date,
@@ -457,9 +486,9 @@ async function runMonitoring() {
       scheduledTime: "11:00 JST",
       capturePlan: isMondayTokyo() ? "Monday full-page homepage archive" : "Daily viewport capture",
       browserMode,
-      insight: reportInsight(items),
-      heroOverview: heroOverview(items),
-      items
+      insight: reportInsight(reportItems),
+      heroOverview: heroOverview(reportItems),
+      items: reportItems
     };
     await fsp.writeFile(path.join(REPORTS_DIR, `${date}.json`), JSON.stringify(report, null, 2), "utf8");
     lastRun = { startedAt, completedAt: new Date().toISOString(), date, status: "success" };

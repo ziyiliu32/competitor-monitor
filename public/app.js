@@ -52,7 +52,7 @@ function createCard(item) {
   const emptyShot = node.querySelector(".empty-shot");
   if (item.screenshot) {
     if (item.screenshotMode === "full-page") node.querySelector(".image-wrap").classList.add("full-page");
-    screenshot.src = item.screenshot;
+    screenshot.src = `${item.screenshot}?v=${encodeURIComponent(item.capturedAt || Date.now())}`;
     screenshot.alt = `${item.brand} ${item.type} screenshot`;
     emptyShot.remove();
   } else {
