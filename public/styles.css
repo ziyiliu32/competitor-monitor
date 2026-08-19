@@ -50,9 +50,10 @@ h1 { font-size: clamp(32px, 4vw, 56px); letter-spacing: -.055em; line-height: 1;
 .brand { color: var(--muted); }
 h3 { margin: 5px 0 0; font-size: 20px; letter-spacing: -.03em; }
 .priority { flex: none; border: 1px solid var(--line); border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 800; }
-.priority.high { background: #fee5df; border-color: #f7b5a4; color: #a33218; }
-.priority.medium { background: #fff1cd; border-color: #edcb7b; color: #805700; }
-.priority.low { background: #eaf1eb; border-color: #bad1bf; color: #376046; }
+.priority.promotion { background: #fee5df; border-color: #f7b5a4; color: #a33218; }
+.priority.launch { background: #e7f0ff; border-color: #afc9f8; color: #235493; }
+.priority.collaboration { background: #f0e9fb; border-color: #d5c2f3; color: #634294; }
+.priority.campaign { background: #eaf1eb; border-color: #bad1bf; color: #376046; }
 .card-links { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0; }
 .source-link { color: var(--accent); font-size: 13px; font-weight: 700; text-decoration: none; }
 .image-wrap { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #e8ebe4; border: 1px solid var(--line); }

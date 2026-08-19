@@ -26,8 +26,11 @@ function displayTimestamp(timestamp) {
   }).format(new Date(timestamp))} JST`;
 }
 
-function priorityClass(priority) {
-  return priority === "High" ? "high" : priority === "Medium" ? "medium" : "low";
+function badgeClass(label) {
+  if (/promotion|sale/i.test(label)) return "promotion";
+  if (/new product|launch/i.test(label)) return "launch";
+  if (/collaboration|collection/i.test(label)) return "collaboration";
+  return "campaign";
 }
 
 function createCard(item) {
@@ -35,9 +38,12 @@ function createCard(item) {
   node.querySelector(".brand").textContent = item.brand;
   node.querySelector(".type").textContent = item.type;
 
-  const priority = node.querySelector(".priority");
-  priority.textContent = `${item.priority || "Low"} priority`;
-  priority.classList.add(priorityClass(item.priority));
+  const badge = node.querySelector(".priority");
+  const badgeLabel = item.kind === "hero"
+    ? (item.analysis?.primary || "Homepage campaign")
+    : "Product listing page";
+  badge.textContent = badgeLabel;
+  badge.classList.add(badgeClass(badgeLabel));
 
   const sourceLink = node.querySelector(".source-link");
   sourceLink.href = item.url;
